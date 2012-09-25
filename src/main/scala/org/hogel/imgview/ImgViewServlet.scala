@@ -2,11 +2,7 @@ package org.hogel.imgview
 
 import org.scalatra._
 import scalate.ScalateSupport
-import org.apache.commons.io.{FilenameUtils, FileUtils}
 import java.io.File
-import xml.{Node, Elem}
-import java.util
-import org.apache.commons.lang3.ArrayUtils
 
 class ImgViewServlet extends ScalatraServlet with ScalateSupport {
   val HOME_DIR = System.getenv.get("HOME")
@@ -16,34 +12,41 @@ class ImgViewServlet extends ScalatraServlet with ScalateSupport {
   }
 
   get("/nav*") {
-    val query = params("splat")
+    val rawQuery = params("splat")
+    val query =
+      if (rawQuery.last == '/')
+        rawQuery.substring(0, rawQuery.length - 1)
+      else
+        rawQuery
     val path = HOME_DIR + query
     val file:File = new File(path)
     val content =
       if (file.isDirectory) {
         val files = file.listFiles()
         <h1>Index of {file}</h1>
-          <ul>
-            {
-            for (f <- files) yield
-              <li>
-                {
-                val name = f.getName
+        <ul>{
+          for (f <- files) yield {
+            val name = f.getName
+            if (name.head != '.')
+              <li>{
                 <a href={url("/nav" + query + '/' + name)}>{name}</a>
-                }
-              </li>
-            }
-          </ul>
+              }</li>
+          }
+        }</ul>
       } else if (file.exists) {
         val dir = file.getParentFile
         val files: Array[File] = dir.listFiles
         val pos:Int = refArrayOps(files).indexOf(file)
-        val prev:File = (if (pos > 0) files(pos - 1) else file)
-        val next:File = (if (pos + 1 < files.length) files(pos + 1) else file)
         <img src={url("/view" + query)} width="740px" usemap="#map" />
         <map name="map">
-          <area shape="rect" coords="0,0,350,900" href={prev.getName} />
-          <area shape="rect" coords="350,0,740,900" href={next.getName} />
+          {
+            if (pos > 0)
+              <area shape="rect" coords="0,0,350,900" href={files(pos - 1).getName} />
+          }
+          {
+            if (pos + 1 < files.length)
+              <area shape="rect" coords="350,0,740,900" href={files(pos+1).getName} />
+          }
         </map>
         <p><a href="..">../</a></p>
       } else {
